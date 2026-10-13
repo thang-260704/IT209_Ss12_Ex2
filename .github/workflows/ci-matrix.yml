@@ -1,0 +1,50 @@
+name: Java CI Matrix (JDK 17 & 21)
+
+on:
+  push:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  test-matrix:
+    name: Test on Java ${{ matrix.java-version }}
+    runs-on: ubuntu-latest
+
+    strategy:
+      # Một phiên bản lỗi không huỷ phiên bản còn lại, để thấy đủ kết quả cả ma trận
+      fail-fast: false
+      matrix:
+        java-version: [ '17', '21' ]
+
+    env:
+      # build.gradle đọc biến này để Gradle biên dịch và chạy test bằng đúng JDK của matrix
+      CI_JAVA_VERSION: ${{ matrix.java-version }}
+
+    steps:
+      - name: Checkout mã nguồn
+        uses: actions/checkout@v5
+
+      - name: Thiết lập Java JDK ${{ matrix.java-version }}
+        uses: actions/setup-java@v5
+        with:
+          java-version: ${{ matrix.java-version }}
+          distribution: 'temurin'
+          cache: 'gradle'
+
+      - name: Kiểm tra phiên bản Java đang dùng
+        run: java -version
+
+      - name: Cấp quyền cho Gradle Wrapper
+        run: chmod +x gradlew
+
+      - name: Thực thi JUnit Test với Gradle
+        run: ./gradlew test
+
+      - name: Lưu báo cáo test (JDK ${{ matrix.java-version }})
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: junit-report-jdk${{ matrix.java-version }}
+          path: build/reports/tests/test/
